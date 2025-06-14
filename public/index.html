@@ -196,7 +196,14 @@
         <h1>Coral Reef Identification System</h1>
     </header>
     
-    <div class="container">
+    <div id="loading-container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading (ANN) Artificial Neural Network...</p>
+            <p>This may take a few moments</p>
+        </div>
+    </div>
+    <div class="container hidden" id="main-app-container">
         <div class="input-section">
             <div class="button-container">
                 <button id="upload-button">Upload from Gallery</button>
@@ -205,24 +212,15 @@
             <input type="file" id="file-input" accept="image/*" class="hidden">
             <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
         </div>
-        
-        <div id="loading" class="loading hidden">
-            <div class="spinner"></div>
-            <p>Loading (ANN) Artificial Neural Network...</p>
-            <p>This may take a few moments</p>
-        </div>
-        
-        <div class="main-content">
+        <div class="main-content" id="main-content">
             <div class="image-container" id="image-container">
                 <p>No image selected</p>
             </div>
-            
             <div class="results-container hidden" id="results-container">
                 <h2>Results</h2>
                 <div id="results-list"></div>
             </div>
         </div>
-        
         <div class="history-section hidden" id="history-section">
             <h2>Recent Images</h2>
             <div class="history-images" id="history-images"></div>
@@ -241,6 +239,9 @@
         const loadingElement = document.getElementById('loading');
         const historySection = document.getElementById('history-section');
         const historyImages = document.getElementById('history-images');
+        const mainContent = document.getElementById('main-content');
+        const loadingContainer = document.getElementById('loading-container');
+        const mainAppContainer = document.getElementById('main-app-container');
         
         // Variables
         let model;
@@ -249,19 +250,27 @@
         
         // Initialize
         async function init() {
-            showLoading(true);
+            loadingContainer.classList.remove('hidden');
+            mainAppContainer.classList.add('hidden');
+            // Show loading for at least 5 seconds
+            const minLoadingTime = 5000;
+            const start = Date.now();
             try {
                 // Use the local model files
                 const modelURL = `${window.location.origin}/coralimagemodel/model.json`;
                 const metadataURL = `${window.location.origin}/coralimagemodel/metadata.json`;
                 
                 model = await tmImage.load(modelURL, metadataURL);
-                console.log('Model loaded successfully');
+                const elapsed = Date.now() - start;
+                if (elapsed < minLoadingTime) {
+                    await new Promise(res => setTimeout(res, minLoadingTime - elapsed));
+                }
             } catch (error) {
                 console.error('Error loading model:', error);
                 alert('Failed to load the model. Please check the console for details.');
             } finally {
-                showLoading(false);
+                loadingContainer.classList.add('hidden');
+                mainAppContainer.classList.remove('hidden');
             }
         }
         
@@ -331,30 +340,25 @@
         
         function displayResults(predictions) {
             resultsList.innerHTML = '';
-            
-            predictions.forEach((prediction, index) => {
+            // Filter, sort, label, and limit predictions
+            const filtered = predictions
+                .filter(p => p.probability * 100 >= 0.01 && p.probability * 100 <= 100)
+                .sort((a, b) => b.probability - a.probability)
+                .slice(0, 3);
+            filtered.forEach((prediction, idx) => {
                 const resultItem = document.createElement('div');
                 resultItem.className = 'result-item';
-                
                 const nameSpan = document.createElement('span');
-                nameSpan.textContent = prediction.className;
-                
+                nameSpan.textContent = (prediction.probability * 100 >= 99)
+                    ? `${prediction.className} (ANN Coral Reef Identified)`
+                    : prediction.className;
                 const confidenceSpan = document.createElement('span');
                 const confidenceText = `${(prediction.probability * 100).toFixed(2)}%`;
                 confidenceSpan.textContent = `Confidence: ${confidenceText}`;
-                
-                if (index === 0) {
-                    const bestGuess = document.createElement('span');
-                    bestGuess.className = 'best-guess';
-                    bestGuess.textContent = 'Best Guess';
-                    confidenceSpan.appendChild(bestGuess);
-                }
-                
                 resultItem.appendChild(nameSpan);
                 resultItem.appendChild(confidenceSpan);
                 resultsList.appendChild(resultItem);
             });
-            
             resultsContainer.classList.remove('hidden');
         }
         
