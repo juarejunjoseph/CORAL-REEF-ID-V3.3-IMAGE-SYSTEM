@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coral Reef Identification System</title>
+    <!-- TensorFlow.js and Teachable Machine libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <style>
+        *, *:before, *:after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #fafafa;
+            color: #212121;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+        
+        header {
+            background-color: #6200ee;
+            color: white;
+            padding: 16px 0;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            padding: 24px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        
+        .button-container {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background-color: #6200ee;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #5000d6;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        
+        .image-container {
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            margin: 0 auto;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .results-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        
+        .result-item {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        
+        .best-guess {
+            background-color: #6200ee;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(98, 0, 238, 0.2);
+            border-radius: 50%;
+            border-top-color: #6200ee;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .history-section {
+            margin-top: 32px;
+        }
+        
+        .history-images {
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            padding: 16px 0;
+        }
+        
+        .history-item {
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        
+        .history-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .image-container {
+                height: auto;
+                max-height: 300px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Coral Reef Identification System</h1>
+    </header>
+    
+    <div class="container">
+        <div class="input-section">
+            <div class="button-container">
+                <button id="upload-button">Upload from Gallery</button>
+                <button id="camera-button">Capture Image</button>
+            </div>
+            <input type="file" id="file-input" accept="image/*" class="hidden">
+            <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
+        </div>
+        
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Loading (ANN) Artificial Neural Network...</p>
+            <p>This may take a few moments</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="image-container" id="image-container">
+                <p>No image selected</p>
+            </div>
+            
+            <div class="results-container hidden" id="results-container">
+                <h2>Results</h2>
+                <div id="results-list"></div>
+            </div>
+        </div>
+        
+        <div class="history-section hidden" id="history-section">
+            <h2>Recent Images</h2>
+            <div class="history-images" id="history-images"></div>
+        </div>
+    </div>
+    
+    <script>
+        // DOM Elements
+        const uploadButton = document.getElementById('upload-button');
+        const cameraButton = document.getElementById('camera-button');
+        const fileInput = document.getElementById('file-input');
+        const cameraInput = document.getElementById('camera-input');
+        const imageContainer = document.getElementById('image-container');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsList = document.getElementById('results-list');
+        const loadingElement = document.getElementById('loading');
+        const historySection = document.getElementById('history-section');
+        const historyImages = document.getElementById('history-images');
+        
+        // Variables
+        let model;
+        let imageHistory = [];
+        let currentImage = null;
+        
+        // Initialize
+        async function init() {
+            showLoading(true);
+            try {
+                // Use the local model files
+                const modelURL = `${window.location.origin}/coralimagemodel/model.json`;
+                const metadataURL = `${window.location.origin}/coralimagemodel/metadata.json`;
+                
+                model = await tmImage.load(modelURL, metadataURL);
+                console.log('Model loaded successfully');
+            } catch (error) {
+                console.error('Error loading model:', error);
+                alert('Failed to load the model. Please check the console for details.');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // Event Listeners
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        cameraButton.addEventListener('click', () => {
+            cameraInput.click();
+        });
+        
+        fileInput.addEventListener('change', handleImageUpload);
+        cameraInput.addEventListener('change', handleImageUpload);
+        
+        // Functions
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const imageURL = URL.createObjectURL(file);
+            displayImage(imageURL);
+            
+            // Reset the input to allow selecting the same file again
+            event.target.value = '';
+        }
+        
+        function displayImage(imageURL) {
+            // Clear previous results
+            resultsList.innerHTML = '';
+            resultsContainer.classList.add('hidden');
+            
+            // Display the image
+            imageContainer.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = imageURL;
+            img.onload = () => identifyImage(img);
+            imageContainer.appendChild(img);
+            
+            currentImage = imageURL;
+        }
+        
+        async function identifyImage(imgElement) {
+            if (!model) {
+                console.error('Model not loaded yet');
+                return;
+            }
+            
+            showLoading(true);
+            
+            try {
+                const predictions = await model.predict(imgElement);
+                displayResults(predictions);
+                
+                // Add to history if not already there
+                if (!imageHistory.includes(currentImage)) {
+                    imageHistory.unshift(currentImage);
+                    updateHistory();
+                }
+            } catch (error) {
+                console.error('Error identifying image:', error);
+                alert('Failed to identify the image. Please try again.');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function displayResults(predictions) {
+            resultsList.innerHTML = '';
+            
+            predictions.forEach((prediction, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = prediction.className;
+                
+                const confidenceSpan = document.createElement('span');
+                const confidenceText = `${(prediction.probability * 100).toFixed(2)}%`;
+                confidenceSpan.textContent = `Confidence: ${confidenceText}`;
+                
+                if (index === 0) {
+                    const bestGuess = document.createElement('span');
+                    bestGuess.className = 'best-guess';
+                    bestGuess.textContent = 'Best Guess';
+                    confidenceSpan.appendChild(bestGuess);
+                }
+                
+                resultItem.appendChild(nameSpan);
+                resultItem.appendChild(confidenceSpan);
+                resultsList.appendChild(resultItem);
+            });
+            
+            resultsContainer.classList.remove('hidden');
+        }
+        
+        function updateHistory() {
+            if (imageHistory.length > 0) {
+                historySection.classList.remove('hidden');
+                historyImages.innerHTML = '';
+                
+                imageHistory.forEach((imageURL, index) => {
+                    if (index >= 10) return; // Limit to 10 images
+                    
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    
+                    const img = document.createElement('img');
+                    img.src = imageURL;
+                    img.alt = 'History image';
+                    img.addEventListener('click', () => displayImage(imageURL));
+                    
+                    historyItem.appendChild(img);
+                    historyImages.appendChild(historyItem);
+                });
+            }
+        }
+        
+        function showLoading(isLoading) {
+            if (isLoading) {
+                loadingElement.classList.remove('hidden');
+            } else {
+                loadingElement.classList.add('hidden');
+            }
+        }
+        
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
