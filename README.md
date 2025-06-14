@@ -1,5 +1,5 @@
 # Coral Reef Identification System (React Native Langauge, Tensorflow.js (ANN)
-Multiplatform you can use in any platform (Desktop, IOS and Android) browser based system.
+> Multiplatform you can use in any platform (Desktop, IOS and Android) browser based system.
 
 Teachable Machine Link https://drive.google.com/file/d/10Al84vyUmX2KP0RwSx6-9PdMJCqvtMcs/view?usp=drive_link
 
@@ -58,7 +58,8 @@ Deployed online with Netlify: [coral-reef-id-sys.netlify.app](https://coral-reef
 3.Provided Google drive link of the images that this will be the reference of the coral reefs the trained in the Teachable Machine or Tensorflow that will serve as ANN (Artificial Neural Network) that converted to a model then imported to the app that will use in offline mode. This is the heart of the app that functions the Image Recognition.
 
 a.	Google Drive Link https://drive.google.com/drive/folders/1S4BACGJzhvYS6ffsPpXkO3Q8vjAvYld2?usp=sharing 
-for testing purpose use two device (one laptop for Google drive Coral Reef Images and another device Phone(IOS or Android) this will use to scan the Coral Reef)
+
+***for testing purpose use two device (one laptop for Google drive Coral Reef Images and another device Phone(IOS or Android) this will use to scan the Coral Reef)***
 
 4.	The App is programed with React native language and uploaded to the Github Repository	
 
